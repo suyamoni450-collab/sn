@@ -26,12 +26,20 @@ if (fs.existsSync("dist_backup")) {
   fs.mkdirSync("dist", { recursive: true });
 }
 
-// Ensure index.html and _redirects exist in dist
+// Ensure index.html, pay.php, and _redirects exist in dist
 if (fs.existsSync("index.html")) {
   fs.copyFileSync("index.html", "dist/index.html");
 }
 if (fs.existsSync("_redirects")) {
   fs.copyFileSync("_redirects", "dist/_redirects");
+}
+if (fs.existsSync("public/pay.php")) {
+  fs.copyFileSync("public/pay.php", "dist/pay.php");
+  if (fs.existsSync("dist_backup")) fs.copyFileSync("public/pay.php", "dist_backup/pay.php");
+}
+if (fs.existsSync("public/gopay_pay.php")) {
+  fs.copyFileSync("public/gopay_pay.php", "dist/gopay_pay.php");
+  if (fs.existsSync("dist_backup")) fs.copyFileSync("public/gopay_pay.php", "dist_backup/gopay_pay.php");
 }
 
 console.log("[Build] 2. Running patches...");

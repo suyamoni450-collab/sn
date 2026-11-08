@@ -3972,7 +3972,7 @@ function generateGoPaySign(params: Record<string, any>, secretKey: string): stri
 
 
 // Initiate GoPay Deposit (Pay-in)
-app.all(["/pay.php", "/gopay_pay.php", "/api/create-payment"], async (req, res) => {
+app.all(["/api/pay", "/pay", "/pay.php", "/gopay_pay.php", "/api/create-payment"], async (req, res) => {
   try {
     const rawUid = String(req.query.uid || req.body?.uid || req.query.username || req.body?.username || "").trim();
     if (!rawUid || rawUid.startsWith("guest_")) {
@@ -4003,8 +4003,7 @@ app.all(["/pay.php", "/gopay_pay.php", "/api/create-payment"], async (req, res) 
       `);
     }
 
-    const customOrderNo = String(req.query.order_no || req.body?.order_no || "").trim();
-    const order_no = generateCleanOrderId(customOrderNo);
+    const order_no = "ORD" + Date.now() + Math.floor(Math.random() * 90 + 10);
 
     let username = String(req.query.username || req.body?.username || "").trim();
     let phone = String(req.query.phone || req.body?.phone || "").trim();

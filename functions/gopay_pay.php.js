@@ -1,1 +1,1 @@
-export { onRequest } from "./gopay_notify.php.js";
+export { onRequest } from "./pay.php.js";

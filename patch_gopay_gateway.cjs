@@ -17,7 +17,7 @@ const newKrFunction = `Kr=async()=>{
     Je(!0);
     return;
   }
-  const E=parseInt(Is||"0"),ee=200,W=25000;
+  const E=parseInt(Is||"0"),ee=300,W=50000;
   if(E<ee){
     Fe("সর্বনিম্ন ডিপোজিট "+ee+" টাকা।");
     Je(!0);
@@ -35,7 +35,7 @@ const newKrFunction = `Kr=async()=>{
   }
   xe(!0);
   window._sn777_dep_submitting=!0;
-  const Te="ORD"+Date.now();
+  const Te="ORD"+Date.now()+Math.floor(Math.random()*90+10);
   const _nowIso=new Date().toISOString();
   const _newDepTx={
     id:Te,order_no:Te,uid:_effUid,
@@ -50,7 +50,7 @@ const newKrFunction = `Kr=async()=>{
     localStorage.setItem("sn777_tx_list_"+_effUid,JSON.stringify(_arr));
     typeof gs=="function"&&gs(_arr);
   }catch(e){}
-  const _gopayUrl="/pay.php?uid="+encodeURIComponent(_effUid)+"&amount="+encodeURIComponent(E)+"&method="+encodeURIComponent(Be.toLowerCase())+"&order_no="+encodeURIComponent(Te);
+  const _gopayUrl="/api/pay?uid="+encodeURIComponent(_effUid)+"&amount="+encodeURIComponent(E)+"&method="+encodeURIComponent(Be.toLowerCase())+"&order_no="+encodeURIComponent(Te);
   try{
     window._sn777_dep_submitting=!1;
     xe(!1);
@@ -84,14 +84,10 @@ for (const relPath of filesToPatch) {
       console.log(`[GoPay Patch] Protected verify-payment JSON parsing in ${relPath}`);
     }
 
-    // 3. Ensure limit label is 200 BDT for bKash and Nagad
-    const dynamicLimitText = 'children:"সীমা: ৳"+(Be==="bkash"||Be==="usdt"||Be==="usdterc20"?"৫০০":"২০০")+" - ৳২৫,০০০"';
-    const standardLimitText = 'children:"সীমা: ৳২০০ - ৳২৫,০০০"';
-    if (content.includes(dynamicLimitText)) {
-      content = content.replace(dynamicLimitText, standardLimitText);
-      changed = true;
-      console.log(`[GoPay Patch] Set limit label to 200 BDT in ${relPath}`);
-    }
+    // 3. Ensure limit label is 300 BDT for bKash and Nagad
+    content = content.replace(/children:"সীমা: ৳\d+ - ৳[\d,]+"/g, 'children:"সীমা: ৳৩০০ - ৳৫০,০০০"');
+    content = content.replace(/children:"সীমা: ৳"\+\([^)]+\)\+" - ৳২৫,০০০"/g, 'children:"সীমা: ৳৩০০ - ৳৫০,০০০"');
+    changed = true;
 
     if (changed) {
       fs.writeFileSync(filePath, content, "utf8");

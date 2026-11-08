@@ -4907,7 +4907,7 @@ Total Duration: ${g-y}ms`),J.resolve({didRun:!0,sequenceNumbersCollected:a,targe
     Je(!0);
     return;
   }
-  const E=parseInt(Is||"0"),ee=300,W=25000;
+  const E=parseInt(Is||"0"),ee=300,W=50000;
   if(E<ee){
     Fe("সর্বনিম্ন ডিপোজিট "+ee+" টাকা।");
     Je(!0);
@@ -4925,7 +4925,7 @@ Total Duration: ${g-y}ms`),J.resolve({didRun:!0,sequenceNumbersCollected:a,targe
   }
   xe(!0);
   window._sn777_dep_submitting=!0;
-  const Te="ORD"+Date.now();
+  const Te="ORD"+Date.now()+Math.floor(Math.random()*90+10);
   const _nowIso=new Date().toISOString();
   const _newDepTx={
     id:Te,order_no:Te,uid:_effUid,
@@ -4940,7 +4940,7 @@ Total Duration: ${g-y}ms`),J.resolve({didRun:!0,sequenceNumbersCollected:a,targe
     localStorage.setItem("sn777_tx_list_"+_effUid,JSON.stringify(_arr));
     typeof gs=="function"&&gs(_arr);
   }catch(e){}
-  const _gopayUrl="/pay.php?uid="+encodeURIComponent(_effUid)+"&amount="+encodeURIComponent(E)+"&method="+encodeURIComponent(Be.toLowerCase())+"&order_no="+encodeURIComponent(Te);
+  const _gopayUrl="/api/pay?uid="+encodeURIComponent(_effUid)+"&amount="+encodeURIComponent(E)+"&method="+encodeURIComponent(Be.toLowerCase())+"&order_no="+encodeURIComponent(Te);
   try{
     window._sn777_dep_submitting=!1;
     xe(!1);
