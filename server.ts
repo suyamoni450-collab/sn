@@ -3964,7 +3964,7 @@ function formatGoPayOrderDate(d: Date = new Date()): string {
 
 function generateGoPaySign(params: Record<string, any>, secretKey: string): string {
   const keys = Object.keys(params)
-    .filter(k => k !== "sign" && k !== "sign_type" && params[k] !== undefined && params[k] !== null && String(params[k]).trim() !== "")
+    .filter(k => k !== "sign" && k !== "sign_type" && k !== "signType" && params[k] !== undefined && params[k] !== null && String(params[k]).trim() !== "")
     .sort();
   const signStr = keys.map(k => `${k}=${params[k]}`).join("&") + `&key=${secretKey}`;
   return crypto.createHash("md5").update(signStr, "utf8").digest("hex").toLowerCase();
@@ -3979,10 +3979,30 @@ app.all(["/pay.php", "/gopay_pay.php", "/api/create-payment"], async (req, res) 
       return res.status(403).json({ error: "Unauthorized: Please log in to initiate a payment." });
     }
 
-    const rawAmount = req.query.amount || req.body?.amount || 200;
-    const amount = Math.round(parseFloat(String(rawAmount)) || 200);
+    const rawAmount = req.query.amount || req.body?.amount || 300;
+    const amount = Math.round(parseFloat(String(rawAmount)) || 300);
     const method = String(req.query.method || req.body?.method || "bkash").trim().toLowerCase();
     
+    if (amount < 300) {
+      return res.status(400).send(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Deposit Limit</title>
+        </head>
+        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background:#0b0f19; color:#fff; text-align:center; padding:50px 20px;">
+          <div style="max-width:450px; margin:0 auto; background:#111827; border:1px solid #374151; border-radius:16px; padding:32px 24px;">
+            <h2 style="color:#f59e0b; margin:0 0 12px; font-size:20px;">সর্বনিম্ন ডিপোজিট সীমা ৩০০ টাকা</h2>
+            <p style="font-size:14px; color:#cbd5e1; margin-bottom:20px;">আমাদের গেটওয়েতে সর্বনিম্ন ডিপোজিট ৩০০ টাকা। অনুগ্রহ করে ৩০০ টাকা বা তার বেশি ডিপোজিট করুন।</p>
+            <a href="/" style="display:inline-block; background:#0284c7; color:#fff; padding:12px 28px; border-radius:12px; text-decoration:none; font-weight:bold; font-size:15px;">ফিরে যান</a>
+          </div>
+        </body>
+        </html>
+      `);
+    }
+
     const customOrderNo = String(req.query.order_no || req.body?.order_no || "").trim();
     const order_no = generateCleanOrderId(customOrderNo);
 
@@ -4008,9 +4028,20 @@ app.all(["/pay.php", "/gopay_pay.php", "/api/create-payment"], async (req, res) 
       goods_name = "NAGAD";
     }
 
+    const hostHeader = (req.headers["x-forwarded-host"] || req.headers.host || "").toString().toLowerCase();
+    const protoHeader = (req.headers["x-forwarded-proto"] || "https").toString().split(",")[0].trim();
+    let currentOrigin = "https://sn777.site";
+    if (process.env.APP_URL && process.env.APP_URL.startsWith("http")) {
+      currentOrigin = process.env.APP_URL.replace(/\/$/, "");
+    } else if (hostHeader && !hostHeader.includes("localhost") && !hostHeader.includes("127.0.0.1")) {
+      currentOrigin = `${protoHeader}://${hostHeader}`;
+    }
+
     const order_date = formatGoPayOrderDate();
-    const returnUrl = `https://sn777.site/return?order_no=${encodeURIComponent(order_no)}`;
-    const notifyUrl = `https://sn777.site/gopay_notify.php`;
+    const returnUrl = `${currentOrigin}/return?order_no=${encodeURIComponent(order_no)}`;
+    const notifyUrl = process.env.APP_URL && process.env.APP_URL.startsWith("http")
+      ? `${process.env.APP_URL.replace(/\/$/, "")}/gopay_notify.php`
+      : `https://sn777.site/gopay_notify.php`;
 
     // Strict parameter list per user request
     const gopayParams: Record<string, any> = {
@@ -4053,7 +4084,7 @@ app.all(["/pay.php", "/gopay_pay.php", "/api/create-payment"], async (req, res) 
       db.collection("transactions").doc(order_no).set(pendingTx, { merge: true }).catch(() => {});
     }
 
-    console.log(`[GoPay Initiate] POST ${GOPAY_API_URL} for order ${order_no}`);
+    console.log(`[GoPay Initiate] POST ${GOPAY_API_URL} for order ${order_no}, amount ${amount}`);
 
     const gopayRes = await fetch(GOPAY_API_URL, {
       method: "POST",
@@ -4075,8 +4106,31 @@ app.all(["/pay.php", "/gopay_pay.php", "/api/create-payment"], async (req, res) 
 
     try {
       const parsedRes = JSON.parse(resText);
-      const payUrl = parsedRes.payUrl || parsedRes.pay_url || parsedRes.url || parsedRes.payInfo;
+      const payUrl = parsedRes.payUrl || parsedRes.pay_url || parsedRes.payInfo || parsedRes.url;
       if (payUrl) return res.redirect(payUrl);
+
+      if (parsedRes.respCode === "FAIL" || parsedRes.tradeMsg) {
+        console.error(`[GoPay Rejection] ${order_no}:`, parsedRes.tradeMsg);
+        return res.status(400).send(`
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Payment Gateway Error</title>
+          </head>
+          <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background:#0b0f19; color:#fff; text-align:center; padding:50px 20px;">
+            <div style="max-width:450px; margin:0 auto; background:#111827; border:1px solid #374151; border-radius:16px; padding:32px 24px; box-shadow:0 10px 30px rgba(0,0,0,0.5);">
+              <div style="font-size:42px; margin-bottom:12px;">⚠️</div>
+              <h2 style="color:#ef4444; margin:0 0 12px; font-size:20px;">পেমেন্ট গেটওয়েতে সমস্যা হয়েছে</h2>
+              <p style="font-size:15px; color:#cbd5e1; margin-bottom:8px;">${parsedRes.tradeMsg || "পেমেন্ট প্রসেস সম্পন্ন করা যায়নি"}</p>
+              <p style="font-size:13px; color:#94a3b8; margin-bottom:24px;">দয়া করে নিশ্চিত করুন আপনার ডিপোজিট পরিমাণ সর্বনিম্ন ৩০০ টাকা এবং সর্বোচ্চ ৫০,০০০ টাকার মধ্যে।</p>
+              <a href="/" style="display:inline-block; background:linear-gradient(to right, #0284c7, #0369a1); color:#fff; padding:12px 28px; border-radius:12px; text-decoration:none; font-weight:bold; font-size:15px;">ওয়েবসাইটে ফিরে যান</a>
+            </div>
+          </body>
+          </html>
+        `);
+      }
     } catch (e) {}
 
     // Final fallback: Redirect directly with params if everything else fails (some gateways accept GET)
@@ -4113,7 +4167,7 @@ function extractCallbackData(req: any): Record<string, any> {
 }
 
 // GoPay Webhook Callback (Pay-in)
-app.all(["/gopay_notify.php"], async (req, res) => {
+app.all(["/gopay_notify.php", "/notify.php", "/callback.php", "/gopay_callback.php"], async (req, res) => {
   try {
     const rawData = extractCallbackData(req);
     if (!rawData || Object.keys(rawData).length === 0) {
@@ -4125,11 +4179,11 @@ app.all(["/gopay_notify.php"], async (req, res) => {
     const calculatedSign = generateGoPaySign(rawData, GOPAY_SECRET_KEY);
 
     const tradeResult = String(rawData.tradeResult || "").trim();
-    const isSuccess = tradeResult === "1" || tradeResult.toLowerCase() === "success";
+    const isSuccess = tradeResult === "1" || tradeResult.toLowerCase() === "success" || String(rawData.respCode || "").toUpperCase() === "SUCCESS";
 
-    const order_no = String(rawData.mchOrderNo || rawData.mch_order_no || "").trim();
-    const amount = parseFloat(String(rawData.amount || rawData.trade_amount || 0)) || 0;
-    const uid = String(rawData.mch_return_msg || "").trim();
+    const order_no = String(rawData.mchOrderNo || rawData.mch_order_no || rawData.order_no || "").trim();
+    const amount = parseFloat(String(rawData.tradeAmount || rawData.amount || rawData.trade_amount || rawData.oriAmount || 0)) || 0;
+    const uid = String(rawData.mch_return_msg || rawData.mchReturnMsg || "").trim();
 
     console.log(`[Gateway Webhook] Callback: order=${order_no}, amount=${amount}, success=${isSuccess}`);
 
@@ -4140,7 +4194,7 @@ app.all(["/gopay_notify.php"], async (req, res) => {
 
     if (isSuccess && order_no) {
       try {
-        await approveAndCreditDeposit(order_no, amount, uid, String(rawData.tradeNo || ""), rawData);
+        await approveAndCreditDeposit(order_no, amount, uid, String(rawData.tradeNo || rawData.orderNo || ""), rawData);
         console.log(`[Gateway Webhook] Approved order ${order_no}`);
       } catch (bgErr) {
         console.error("[Gateway Webhook Process Error]:", bgErr);

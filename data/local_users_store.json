@@ -262,5 +262,13 @@
     "updatedAt": "2026-10-12T17:21:41.347Z",
     "totalDeposited": 2200,
     "approvedDepositsCount": 2
+  },
+  "test_user_webhook": {
+    "uid": "test_user_webhook",
+    "username": "test_user_webhook",
+    "balance": "1077.00",
+    "updatedAt": "2026-11-08T14:20:46.470Z",
+    "totalDeposited": 0,
+    "approvedDepositsCount": 0
   }
 }

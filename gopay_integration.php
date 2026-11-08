@@ -37,8 +37,8 @@ curl_close($ch);
 
 $res = json_decode($response, true);
 if ($res && isset($res['respCode']) && $res['respCode'] === 'SUCCESS') {
-    // Priority: payUrl, fallback: pay_url
-    $payUrl = $res['payUrl'] ?? $res['pay_url'] ?? '';
+    // Priority: payUrl, fallback: pay_url or payInfo
+    $payUrl = $res['payUrl'] ?? $res['pay_url'] ?? $res['payInfo'] ?? '';
     if ($payUrl) {
         header("Location: " . $payUrl);
         exit;
