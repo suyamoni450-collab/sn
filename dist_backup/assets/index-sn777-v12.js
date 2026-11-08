@@ -2,7 +2,7 @@
 (function() {
   if (typeof window !== "undefined") {
     var isLocalOrRunApp = window.location.hostname.includes("run.app") || window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
-    window.BACKEND_API_BASE = isLocalOrRunApp ? "" : "https://sn777-site-864935185164.us-west1.run.app";
+    window.BACKEND_API_BASE = "";
     
     var origFetch = window.fetch;
     if (origFetch) {
